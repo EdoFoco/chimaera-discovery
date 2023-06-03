@@ -35,25 +35,30 @@ const runFindCommonHoldersForTokens = async() => {
     }
 
 
-    const tokenAddresses : string | undefined = process.env.HOLDER_ANALYSER_TOKENS_TO_SCAN;
+    const tokenAddresses : string | undefined = process.env.FIND_HOLDERS_FOR_TOKENS_TOKENS_TO_SCAN;
     if(!tokenAddresses){
-        console.log("No HOLDER_ANALYSER_TOKENS_TO_SCAN found.");
+        console.log("No FIND_HOLDERS_FOR_TOKENS_TOKENS_TO_SCAN found.");
         return;
     }
 
-    const scoreMin : string | undefined = process.env.HOLDER_ANALYSER_SCORE_MIN;
+    const scoreMin : string | undefined = process.env.FIND_HOLDERS_FOR_TOKENS_SCORE_MIN;
     if(!scoreMin){
-        console.log("No HOLDER_ANALYSER_SCORE_MIN found.");
+        console.log("No FIND_HOLDERS_FOR_TOKENS_SCORE_MIN found.");
         return;
     }
     
+    const outputPath: string | undefined = process.env.FIND_HOLDERS_FOR_TOKENS_OUTPUT_PATH;
+    if(!outputPath){
+        console.log("No FIND_HOLDERS_FOR_TOKENS_OUTPUT_PATH found.");
+        return;
+    }
 
     Container.set('nodeUrl', nodeUrl);
     Container.set('baseTokenAddresses', baseTokenAddresses.split(','));
     
     const holderAnalyser = Container.get(HolderAnalyser);
 
-    await holderAnalyser.getCommonHolderForTokens(tokenAddresses.split(','), parseInt(scoreMin));
+    await holderAnalyser.getCommonHoldersForTokens(tokenAddresses.split(','), parseInt(scoreMin), outputPath);
 }
 
 const runFindCommonTokensForHolders = async() => {
@@ -93,14 +98,19 @@ const runFindCommonTokensForHolders = async() => {
         console.log("No FIND_COMMON_TOKEN_FOR_HOLDERS_BUY_TRIGGER found.");
         return;
     }
-    
+
+    const outputPath: string | undefined = process.env.FIND_COMMON_TOKEN_FOR_HOLDERS_OUTPUT_PATH;
+    if(!outputPath){
+        console.log("No FIND_COMMON_TOKEN_FOR_HOLDERS_OUTPUT_PATH found.");
+        return;
+    }
 
     Container.set('nodeUrl', nodeUrl);
     Container.set('baseTokenAddresses', baseTokenAddresses.split(','));
     
     const holderAnalyser = Container.get(HolderAnalyser);
 
-    await holderAnalyser.getCommonTokenBuysV2(wallets.split(','), parseInt(minTokens), parseInt(buyTrigger), parseInt(fromBlock));
+    await holderAnalyser.getCommonTokenBuys(wallets.split(','), parseInt(minTokens), parseInt(buyTrigger), outputPath, parseInt(fromBlock));
 }
 
 const rundBacktest = async() => {

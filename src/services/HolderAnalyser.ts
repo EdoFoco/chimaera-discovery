@@ -1,42 +1,36 @@
+import * as fs from 'fs';
+import { Service, Inject } from "typedi";
 import { AlchemyClient } from "../clients";
 import { TokenService } from "./TokenService";
-import { Service, Inject } from "typedi";
 import { BoughtTokenStats, IWallet } from "../types";
-import * as fs from 'fs';
-import { BigNumber } from "alchemy-sdk";
 
 @Service()
 export class HolderAnalyser{
-    
     private readonly nodeClient: AlchemyClient;
     private readonly tokenService: TokenService;
-    // private readonly uniswappishDecoder: UniswappishDecoder;
-    // private readonly swapTransactionMapper: SwapTransactionMapper;
     private readonly baseTokens: Set<string>;
     private readonly uniswapAddresses: Set<string>;
     constructor(nodeClient: AlchemyClient, tokenService: TokenService, 
-        // uniswappishDecoder: UniswappishDecoder, swapTransactionMapper: SwapTransactionMapper, 
         @Inject('baseTokenAddresses') baseTokens: string[]) {
         this.nodeClient = nodeClient;
         this.tokenService = tokenService;
-        // this.uniswappishDecoder = uniswappishDecoder;
-        // this.swapTransactionMapper = swapTransactionMapper;
         this.baseTokens = new Set<string>();
         this.uniswapAddresses = new Set<string>();
         this.uniswapAddresses.add("0x877193009a881359e80df3ded7c6e055be9cc144");
         this.uniswapAddresses.add("0x21d5996bbc760627d71f857f321249b61da96351");
 
-        baseTokens.forEach((t) => { if(!(this.baseTokens.has(t))) this.baseTokens.add(t)}); // create hashset of base tokens addresses
+        // create hashset of base tokens addresses
+        baseTokens.forEach((t) => { if(!(this.baseTokens.has(t))) this.baseTokens.add(t)}); 
     }
 
-    async getCommonHolderForTokens(tokenAddresses: string[], scoreMin: number, maxTransactionPerToken: number = 1000) {
+    async getCommonHoldersForTokens(tokenAddresses: string[], scoreMin: number, outputPath: string, maxTransactionPerToken: number = 1000) {
         // Foreach token get all wallet transactions for token, save token, save who bought first
         // Find cluster winner (who bought first)
         const wallets: Record<string, IWallet> = {};
          
+        console.log(`\n[[ Chimaera Discovery ]] - Finding common holders.\n`)
         for(let i = 0; i < tokenAddresses.length; i++){
             const t = tokenAddresses[i];
-            console.log(`Analysing token: ${t}`);
             if(this.baseTokens.has(t)) continue; // skip base tokens
 
             await this.tokenService.getOrAddToken(t);
@@ -45,6 +39,8 @@ export class HolderAnalyser{
         const tokens = await this.tokenService.getTokens(tokenAddresses);
 
         for(let i = 0; i < tokens.length; i++){
+            console.log(`Analyzing token ${tokens[i].address}...`);
+
             const t = tokens[i].address;
             if(this.baseTokens.has(t)) continue; // skip base tokens
 
@@ -86,17 +82,17 @@ export class HolderAnalyser{
         }
 
         commonWallets = commonWallets.sort((a,b) => a.boughtTokensCount > b.boughtTokensCount ? -1 : 1 );
-        fs.writeFile('common_holders_for_tokens.json', JSON.stringify(commonWallets,null, 2), 'utf8', () => console.log('done!'));
-        // console.log(commonWallets);
+        fs.writeFile(outputPath, JSON.stringify(commonWallets,null, 2), 'utf8', () => console.log(`Done! Exporting to ${outputPath}`));
     }
     
-    async getCommonTokenBuysV2(walletAddresses: string[], minTokens: number, buyTrigger: number, fromBlock: number = 16884955) {
-        console.log(fromBlock);
+    async getCommonTokenBuys(walletAddresses: string[], minTokens: number, buyTrigger: number, outputPath: string, fromBlock: number = 0) {
+        console.log(`\n[[ Chimaera Discovery ]] - Finding common buy ops.\n`)
+
         // Get all token balances per wallet
-        // const wallets: Wallet[] = [];
         const wallets: Record<string, IWallet> = {};
         const tokensBought: Record<string, number> = {};
         for(let i = 0; i < walletAddresses.length; i++){
+            console.log(`Getting token balances for wallet ${walletAddresses[i]}...`);
             const wallet = <IWallet>{
                 address: walletAddresses[i],
                 tokensHeld: new Set<string>(),
@@ -105,13 +101,13 @@ export class HolderAnalyser{
 
             const tBalances = await this.nodeClient.getTokeBalancesForWallet(walletAddresses[i]);
             tBalances.forEach((t) => {
-                if(!(wallet.tokensHeld?.has(t.contractAddress))) wallet.tokensHeld?.add(t.contractAddress);
-                if(t.contractAddress in tokensBought){
-                    tokensBought[t.contractAddress] += 1;
+                if(!(wallet.tokensHeld?.has(t.contractAddress.toLowerCase()))) wallet.tokensHeld?.add(t.contractAddress.toLowerCase());
+                if(t.contractAddress.toLowerCase() in tokensBought){
+                    tokensBought[t.contractAddress.toLowerCase()] += 1;
                 }
                 else{
-                    tokensBought[t.contractAddress] = 1;
-                    wallet.tokensHeld?.add(t.contractAddress);
+                    tokensBought[t.contractAddress.toLowerCase()] = 1;
+                    wallet.tokensHeld?.add(t.contractAddress.toLowerCase());
                 }
             });
 
@@ -126,8 +122,7 @@ export class HolderAnalyser{
             }
         });
         
-
-        // Get the transactions for those tokens
+        // Get transactions for the common tokens
         const commonTokenAddresses = commonTokens.map((t) => t.tokenAddress);
         for(let i = 0; i < walletAddresses.length; i++){
             const wallet = wallets[walletAddresses[i]];
@@ -138,8 +133,7 @@ export class HolderAnalyser{
                 }
             })
 
-            console.log("Count ", walletCommonTokens.length);
-            let tTxns = await this.nodeClient.getIncomingERC20Transactions(wallet.address, walletCommonTokens, undefined, undefined, "asc");
+            let tTxns = await this.nodeClient.getIncomingERC20Transactions(wallet.address, walletCommonTokens, fromBlock.toString(), undefined, "asc");
             tTxns = tTxns.sort((a,b) => a.blockNum < b.blockNum ? -1 : 1);
             tTxns.forEach((t) => {
                 if(t.rawContract.address in wallet.boughtTokens){
@@ -177,6 +171,7 @@ export class HolderAnalyser{
 
             // Sort by boughtAt to see who bought first
             walletsThatBought.sort((a, b) =>  a.boughtAt < b.boughtAt ? -1 : 1);
+
             walletsThatBought.forEach((w) => {
                 const wAddress = w.wallet;
                 if(!(token.address in wallets[wAddress].boughtTokens)) return;
@@ -193,97 +188,22 @@ export class HolderAnalyser{
                     token.firstBoughtAt = boughtAt;
                 }
                 
-                // if this buy happened after the current last buy at value and this is less then the 3rd wallet that bought, replace
+                // if this buy happened after the current last buy at value, replace
                 if(boughtAt > token.lastBoughtAt){
                     token.lastBoughtAt = boughtAt;
                     token.lastBuyer = wAddress;
                 }
 
-                // if this buy is has triggered a buy operation
+                // if this buy has triggered a buy operation
                 if(token.holdersCount >= buyTrigger && boughtAt < token.buyTriggeredAt!){
                     token.buyTriggeredAt = boughtAt;
                 }
-
             });
 
             topBoughtTokens.push(token);
         }
 
         topBoughtTokens = topBoughtTokens.filter((t) => t.holdersCount >= minTokens && t.buyTriggeredAt < new Date(2023, 6, 1)).sort((a,b) => a.buyTriggeredAt > b.buyTriggeredAt ? -1 : 1);
-        fs.writeFile('common_tokens_per_wallet.json', JSON.stringify(topBoughtTokens,null, 2), 'utf8', () => console.log('exported to common_tokens_per_wallet.json'));
-    }
-
-    async getCommonTokenBuys(walletAddresses: string[], fromBlock: number = 16884955) {
-        const fromBlockStr = BigNumber.from(fromBlock);
-
-        const tokenMap: Set<string> = new Set<string>();
-        const tokens: string[] = [];
-        const walletMap: Record<string, IWallet> = {};
-        for(let i = 0; i < walletAddresses.length; i++){
-            const wallet = <IWallet>{
-                address: walletAddresses[i].toLocaleLowerCase(),
-                boughtTokensCount: 0,
-                boughtTokens: {}
-            };
-            
-            console.log(`Getting tokens for wallet: ${wallet.address}`);
-            const txns = await this.nodeClient.getIncomingERC20Transactions(walletAddresses[i],undefined, fromBlockStr.toHexString());
-            for(let k = 0; k < txns.length; k++){
-                if(this.baseTokens.has(txns[k].rawContract.address.toLowerCase())) continue; // skip base tokens
-                if(!(txns[k].rawContract.address in wallet.boughtTokens)){
-                    wallet.boughtTokens[txns[k].rawContract.address] = new Date(txns[k].metadata.blockTimestamp);
-                    if(!(tokenMap.has(txns[k].rawContract.address))){
-                        tokenMap.add(txns[k].rawContract.address);
-                        tokens.push(txns[k].rawContract.address);
-                    }
-                }
-            }
-
-            walletMap[wallet.address] = wallet;
-        }
-
-        const commonTokens: BoughtTokenStats[] = [];
-        for(let i = 0; i < tokens.length; i++){
-            const token = <BoughtTokenStats>{
-                address: tokens[i],
-                holdersCount: 0,
-                firstBoughtAt: new Date(2500, 1, 1),
-                lastBoughtAt: new Date(100, 1, 1),
-                holders: [],
-                lastBuyer: "",
-                holdersWithDates: [],
-                buyTriggeredAt: new Date(2500, 1, 1),
-            };
-            
-            for(let k = 0; k < walletAddresses.length; k++){
-                const wAddress = walletAddresses[k].toLocaleLowerCase();
-                
-                if(!(token.address in walletMap[wAddress].boughtTokens)) continue;
-                
-                token.holdersCount += 1;
-                token.holders.push(wAddress);
-                const boughtAt = walletMap[wAddress].boughtTokens[token.address];
-                const holderWithDate: Record<string, Date> = {};
-                holderWithDate[wAddress] = boughtAt;
-                token.holdersWithDates.push(holderWithDate);
-
-                // if this buy happened before the current first buy at value, replace
-                if(boughtAt < token.firstBoughtAt){
-                    token.firstBoughtAt = boughtAt;
-                }
-                
-                // if this buy happened after the current last buy at value and this is less then the 3rd wallet that bought, replace
-                if(boughtAt > token.lastBoughtAt && token.holdersCount < 3){
-                    token.lastBoughtAt = boughtAt;
-                    token.lastBuyer = wAddress;
-                }
-            }
-
-            commonTokens.push(token);
-        }
-        console.log('\n\n\n\nDONE\n\n\n\n');
-        let winners = commonTokens.filter((t) => t.holdersCount > 1);
-        winners = commonTokens.sort((a,b) => a.holdersCount > b.holdersCount ? -1 : 1 );
-        fs.writeFile('common_results.json', JSON.stringify(winners,null, 2), 'utf8', console.log);
+        fs.writeFile(outputPath, JSON.stringify(topBoughtTokens,null, 2), 'utf8', () => console.log(`Done! Exporting to ${outputPath}`));
     }
 }

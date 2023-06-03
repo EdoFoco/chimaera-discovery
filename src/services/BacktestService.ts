@@ -64,14 +64,12 @@ export class BacktestService {
 
             // only get the highest
             if(tokenPerf.hit15x){
-                console.log(op.address);
                 tokenPerf.hit2x = false;
                 tokenPerf.hit3x = false;
                 tokenPerf.hit5x = false;
                 tokenPerf.hit10x = false;
             }
             if(tokenPerf.hit10x){
-                console.log(op.address);
                 tokenPerf.hit2x = false;
                 tokenPerf.hit3x = false;
                 tokenPerf.hit5x = false;
