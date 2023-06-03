@@ -1,6 +1,6 @@
-import { TokenMetadata } from "src/types";
+import { ITokenMetadata } from "../../ITokenMetadata";
 import { IBaseAlchemyResponse } from "./IBaseAlchemyResponse";
 
 export interface IGetTokenMetadataResponse extends IBaseAlchemyResponse {
-    result: TokenMetadata
+    result: ITokenMetadata
 }

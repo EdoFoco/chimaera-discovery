@@ -1,10 +1,8 @@
 import { IAlchemySwapTransaction } from "..";
+import { IBaseAlchemyResponse } from "./IBaseAlchemyResponse";
 
-export interface IGetERC20TransactionResponse {
-    id: Number;
-    jsonRpc: String;
-    method: String;
-    result: IGetERC20TransactionsResult
+export interface IGetERC20TransactionResponse extends IBaseAlchemyResponse {
+    result: IGetERC20TransactionsResult;
 }
 
 export interface IGetERC20TransactionsResult {
