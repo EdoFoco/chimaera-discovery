@@ -28,8 +28,8 @@ export class AlchemyClient extends BaseClient implements INodeClient {
         fromBlock: string | undefined = undefined, toBlock: string | undefined = undefined, 
         order: string = 'desc'): Promise<ISwapTransaction[]> {
         
-        fromBlock = fromBlock ?? '0x0';
-        toBlock = toBlock ?? 'latest';
+        fromBlock = fromBlock ? BigNumber.from(fromBlock).toHexString() : '0x0';
+        toBlock = toBlock ? BigNumber.from(fromBlock).toHexString() : 'latest';
         
         const transfers: ISwapTransaction[] = [];
         let pageKey = undefined;
@@ -51,8 +51,11 @@ export class AlchemyClient extends BaseClient implements INodeClient {
                     pageKey
                 },
             }
-            
+
             const response = await this.postData<IGetERC20TransactionResponse>(this.url, request);
+            if(response.error)
+                throw (`Alchemy Error: getIncomingERC20Transactions - ${response.error.message}`);
+            
             if(response.result?.transfers)
                 transfers.push(...response.result.transfers);
             pageKey = response.result?.pageKey;
@@ -68,7 +71,6 @@ export class AlchemyClient extends BaseClient implements INodeClient {
         Promise<ISwapTransaction[]> {
             
         const maxCountBn = BigNumber.from(maxCount).toHexString();
-            console.log(maxCountBn);
 
         fromBlock = fromBlock ?? '0x0';
         toBlock = toBlock ?? 'latest';
@@ -89,8 +91,10 @@ export class AlchemyClient extends BaseClient implements INodeClient {
         }
 
         const response = await this.postData<IGetERC20TransactionResponse>(this.url, request);
-            console.log(response);
-            return response.result.transfers;
+        if(response.error)
+            throw (`Alchemy Error: getIncomingERC20TransactionsForTokens - ${response.error.message}`);
+
+        return response.result.transfers;
     }
 
     async getTransactionReceipt(txnHash: string): Promise<TransactionResponse> {
@@ -113,6 +117,9 @@ export class AlchemyClient extends BaseClient implements INodeClient {
         }
        
         const response = await this.postData<IGetTokenMetadataResponse>(this.url, request);
+        if(response.error)
+            throw (`Alchemy Error: getTokenMetadata - ${response.error.message}`);
+
         return response.result;
     }
 
@@ -130,6 +137,9 @@ export class AlchemyClient extends BaseClient implements INodeClient {
             }
     
             const response = await this.postData<IGetTokenBalanceResponse>(this.url, request);
+            if(response.error)
+                throw (`Alchemy Error: getTokeBalancesForWallet - ${response.error.message}`);
+
             tokenBalances.push(...response.result.tokenBalances);
             pageKey = response.result.pageKey;
             isLastResult = pageKey ? false : true;
