@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { Service, Inject } from "typedi";
 import { AlchemyClient } from "../clients";
 import { TokenService } from "./TokenService";
-import { BoughtTokenStats, IWallet } from "../types";
+import { IBoughtTokenStats, IWallet } from "../types";
 
 @Service()
 export class HolderAnalyser{
@@ -149,9 +149,9 @@ export class HolderAnalyser{
             wallets[wallet.address] = wallet;
         }
 
-        let topBoughtTokens: BoughtTokenStats[] = [];
+        let topBoughtTokens: IBoughtTokenStats[] = [];
         for(let i = 0; i < commonTokens.length; i++){
-            const token = <BoughtTokenStats>{
+            const token = <IBoughtTokenStats>{
                 address: commonTokens[i].tokenAddress,
                 holdersCount: 0,
                 firstBoughtAt: new Date(2500, 1, 1),

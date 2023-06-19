@@ -1,7 +1,6 @@
-import * as fs from 'fs';
 import { Service } from "typedi";
 import { DexViewClient } from "../clients/implementations/DexViewClient";
-import { BoughtTokenStats } from "../types";
+import { IBoughtTokenStats } from "../types";
 import { ITokenPerformance } from '../types/ITokenPerformance';
 
 @Service()
@@ -12,15 +11,13 @@ export class BacktestService {
         this.dexViewClient = dexViewClient;
     }
 
-    async backtest(inputFile: string, minHolders: number) {
-        const jsonString = fs.readFileSync(inputFile, 'utf-8');
-        const allOperations = JSON.parse(jsonString) as BoughtTokenStats[];
-        const operations = allOperations.filter((op) => op.holdersCount >= minHolders);
+    async backtest(operations: IBoughtTokenStats[], minHolders: number) {
+        const filtered = operations.filter((op) => op.holdersCount >= minHolders);
 
         const results: ITokenPerformance[] = [];
 
-        for(let i = 0; i < operations.length; i++){
-            const op = operations[i];
+        for(let i = 0; i < filtered.length; i++){
+            const op = filtered[i];
 
             const pairData = await this.dexViewClient.getPairData(op.address);
             if(!pairData.data?.address){
@@ -37,11 +34,12 @@ export class BacktestService {
             for(let k = i; k < ts.data.t.length; k++){
                 const time = ts.data.t[k];
                 if(time >= fromUtc){
-                    startIndex = k + 2; // allow 3min offset to allow the trade to execute
+                    startIndex = k + 2; // allow 3min offset to simulate a trade we might make
                     break;
                 }
             }
 
+            // todo: refactor this code
             const startValue = ts.data.c[startIndex];
             const tokenPerf = <ITokenPerformance>{
                 hit2x: false,
@@ -62,7 +60,6 @@ export class BacktestService {
                 if(ret >= 15) tokenPerf.hit15x = true;
             }
 
-            // only get the highest
             if(tokenPerf.hit15x){
                 tokenPerf.hit2x = false;
                 tokenPerf.hit3x = false;

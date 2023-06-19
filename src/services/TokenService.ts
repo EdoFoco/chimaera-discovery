@@ -32,7 +32,7 @@ export class TokenService {
         return this.tokenRepo.addHolder(tokenAddress, holderAddress);
     }
 
-    async getTokens(addresses: string[]){
+    async getTokens(addresses: string[]) : Promise<ITokenWithHolders[]>{
         const tokens: ITokenWithHolders[] = [];
         addresses.forEach(async (a) => {
            const token = await this.tokenRepo.get(a);

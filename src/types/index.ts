@@ -6,7 +6,7 @@ import { ITokenMetadata } from "./ITokenMetadata";
 import { IUniswappishTransactionDecoded } from "./uniswappish/IUniswappishTransactionDecoded";
 import { IUniswappishTransaction } from "./uniswappish/IUniswappishTransaction";
 import { ISwapTransaction, OperationType } from "./ISwapTransaction";
-import { BoughtTokenStats } from "./IBoughtTokenStats";
+import { IBoughtTokenStats } from "./IBoughtTokenStats";
 import { ITokenBalance } from "./ITokenBalance";
 
 export { 
@@ -20,6 +20,6 @@ export {
     ISwapTransaction, 
     SwapStatus, 
     OperationType, 
-    BoughtTokenStats, 
+    IBoughtTokenStats, 
     ITokenBalance
  };

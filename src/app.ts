@@ -1,8 +1,10 @@
 import 'reflect-metadata';
 import "dotenv/config";
+import * as fs from 'fs';
 import Container from 'typedi';
 import { HolderAnalyser } from './services/HolderAnalyser';
 import { BacktestService } from './services/BacktestService';
+import { BoughtTokenStats } from './types';
 
 const main = async () => {
     const mode = process.env.MODE;
@@ -137,14 +139,15 @@ const rundBacktest = async() => {
         console.log("No DEXVIEW_SECRET found.");
         return;
     }
-    
 
     Container.set('dexViewUrl', dexViewUrl);
     Container.set('dexViewSecret', dexViewSecret);
     
     const backtestService = Container.get(BacktestService);
 
-    await backtestService.backtest(inputFile, parseInt(minHolders));
+    const jsonString = fs.readFileSync(inputFile, 'utf-8');
+    const operations = JSON.parse(jsonString) as BoughtTokenStats[];
+    await backtestService.backtest(operations, parseInt(minHolders));
 }
 
 main().catch((err) => {

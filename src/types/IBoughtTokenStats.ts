@@ -1,4 +1,4 @@
-export interface BoughtTokenStats {
+export interface IBoughtTokenStats {
     address: string;
     holdersCount: number;
     holders: string[];
