@@ -1,6 +1,6 @@
-# Chimaera - Execution Phase
+# Chimaera - Discovery & Backtesting
 
-The Execution Phase of the Chimaera project is designed to continuously monitor the blockchain and apply the strategies developed during the Discovery Phase. Its output will be signals on our Telegram channel, indicating when the conditions defined by the strategies are met and it's potentially beneficial to buy specific tokens.
+The Discovery and Backtesting phases of the Chimaera project are two essential components of our token investment system. The Discovery Phase involves developing various strategies, each representing a unique rule set to identify promising ERC-20 tokens. Once we've developed these strategies, the Backtesting Phase comes into play, validating the effectiveness of our strategies by simulating their performance using historical data.
 
 ## Prerequisites
 
